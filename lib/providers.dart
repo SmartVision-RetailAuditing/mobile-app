@@ -2,43 +2,17 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:smart_vision_mobile/tools/token_manager.dart';
 
-import 'model/task.dart';
+import 'model/task_dto.dart'; // Token yöneticisini import et
 
 // 1. Navigation Bar için seçili index (0, 1, 2, 3...)
 final navIndexProvider = StateProvider<int>((ref) => 0);
 
-// 2. Tasks Ekranı için aktif tab ('active' veya 'history')
-final taskTabProvider = StateProvider<String>((ref) => 'active');
-
-// 3. Tasks Ekranı için seçili tarih
-final taskDateProvider = StateProvider<DateTime>((ref) => DateTime(2025, 12, 7));
-
-// 4. Profil Verisi (Mock Data - Gerçek uygulamada API'den gelir)
-final userProfileProvider = Provider<Map<String, dynamic>>((ref) {
-  return {
-    'name': 'Ahmet Yılmaz',
-    'role': 'Field Worker',
-    'id': 'FW-2025-0042',
-    'email': 'ahmet.yilmaz@company.com',
-    'phone': '+90 555 123 4567',
-    'stats': {
-      'total': '12',
-      'done': '8',
-      'pending': '4'
-    },
-    'performance': {
-      'completionRate': 0.92,
-      'avgScore': 0.85,
-      'visits': '127'
-    }
-  };
-});
-
-// 5. Dashboard: Seçili Ziyaret ID'si
+// 2. Dashboard: Seçili Ziyaret ID'si
 final dashboardSelectedVisitProvider = StateProvider<int>((ref) => 1);
 
-// 6. Dashboard: Grafik Verileri (Mock Data)
+// 3. Dashboard: Grafik Verileri (Mock Data - Henüz gerçek API'ye bağlanmadı)
 final dashboardDataProvider = Provider<Map<String, dynamic>>((ref) {
   return {
     'recentVisits': [
@@ -76,47 +50,13 @@ final dashboardDataProvider = Provider<Map<String, dynamic>>((ref) {
   };
 });
 
-// 7. Görev Listesi Verisi (Mock Data)
-final taskListProvider = Provider<List<Task>>((ref) {
-  return [
-    Task(
-        id: 1,
-        marketName: 'Migros MM Kadıköy',
-        address: 'Caferağa Mah. Moda Cad. No: 45, Kadıköy',
-        taskType: 'Shelf Audit',
-        dueDate: '7 Aralık 2025',
-        frequency: 'Haftalık ziyaret',
-        status: 'Pending'
-    ),
-    Task(
-        id: 2,
-        marketName: 'CarrefourSA Bağdat Caddesi',
-        address: 'Bağdat Cad. No: 234, Maltepe',
-        taskType: 'Price Check',
-        dueDate: '7 Aralık 2025',
-        frequency: 'Haftalık ziyaret',
-        status: 'Pending'
-    ),
-    Task(
-        id: 3,
-        marketName: 'Şok Market Üsküdar',
-        address: 'Kısıklı Mah. Alemdağ Cad. No: 12, Üsküdar',
-        taskType: 'Shelf Audit',
-        dueDate: '7 Aralık 2025',
-        frequency: 'Haftalık ziyaret',
-        status: 'Done'
-    ),
-    Task(
-        id: 4,
-        marketName: 'A101 Kartal',
-        address: 'Yakacık Mah. Ankara Cad. No: 78, Kartal',
-        taskType: 'Panorama',
-        dueDate: '7 Aralık 2025',
-        frequency: 'Haftalık ziyaret',
-        status: 'Pending'
-    ),
-  ];
+// 4. Uygulama Teması (Light / Dark mod)
+final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.light);
+
+// 5. Kapı Görevlisi (Auth Checker) - Uygulama açıldığında token kontrolü yapar
+final authCheckProvider = FutureProvider<bool>((ref) async {
+  final token = await TokenManager.getToken();
+  return token != null; // Token varsa true, yoksa false döner
 });
 
-// Varsayılan olarak Aydınlık (Light) mod başlatıyoruz
-final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.light);
+final activeTaskProvider = StateProvider<TaskDto?>((ref) => null);

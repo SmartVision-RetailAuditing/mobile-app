@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "com.example.smart_vision_mobile"
-    compileSdk = flutter.compileSdkVersion
+    //compileSdk = flutter.compileSdkVersion ÖÖ
+    compileSdk = 36
 
     // ---> 1. DEĞİŞİKLİK: Bu satırı aşağıdaki gibi değiştir:
     ndkVersion = "27.0.12077973"
@@ -24,7 +25,8 @@ android {
         applicationId = "com.example.smart_vision_mobile"
 
         // ---> 2. DEĞİŞİKLİK: Google Maps için bunu 21 yapman en garantisidir:
-        minSdk = 21
+        //minSdk = 21 ÖÖ
+        minSdk = 24
         // Eski hali şuydu: minSdk = flutter.minSdkVersion
 
         targetSdk = flutter.targetSdkVersion

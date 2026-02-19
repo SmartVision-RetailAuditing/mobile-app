@@ -20,11 +20,7 @@ class NavigationBarView extends ConsumerWidget {
     final List<Widget> pages = [
       const TaskScreen(),
       const MapScreen(),
-      CameraScreen(
-        onComplete: () {
-          ref.read(navIndexProvider.notifier).state = 3;
-        },
-      ),
+      const CameraScreen(),
       const DashboardScreen(),
       const ProfileScreen(),
     ];
