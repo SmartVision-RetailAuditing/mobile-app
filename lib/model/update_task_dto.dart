@@ -1,11 +1,11 @@
 class UpdateTaskDto {
   final int? storeId;
   final int? userId;
-  final int? taskType;
-  final int? priority;
+  final int? taskType; // String? yerine tekrar int? yapıyoruz
+  final int? priority; // String? yerine tekrar int? yapıyoruz
   final String? dueDate;
   final String? description;
-  final int? status;
+  final int? status;   // String? yerine tekrar int? yapıyoruz
 
   UpdateTaskDto({
     this.storeId,
@@ -20,7 +20,6 @@ class UpdateTaskDto {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = {};
 
-    // Sadece null olmayan alanları JSON'a ekliyoruz
     if (storeId != null) data['storeId'] = storeId;
     if (userId != null) data['userId'] = userId;
     if (taskType != null) data['taskType'] = taskType;

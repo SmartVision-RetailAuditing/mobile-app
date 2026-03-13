@@ -15,16 +15,17 @@ class WeeklyTasksStatsDto {
 }
 
 class PerformanceStatsDto {
-  final int? completionRate;
-  final int? averageScore;
+  final double? completionRate; // int? yerine double? yaptık
+  final double? averageScore;   // int? yerine double? yaptık
   final int? totalStoreVisits;
 
   PerformanceStatsDto({this.completionRate, this.averageScore, this.totalStoreVisits});
 
   factory PerformanceStatsDto.fromJson(Map<String, dynamic> json) {
     return PerformanceStatsDto(
-      completionRate: json['completionRate'] as int?,
-      averageScore: json['averageScore'] as int?,
+      // Backend'den 80 (int) veya 80.5 (double) gelebilir. 'num' kullanmak her ikisini de güvenle 'double'a çevirir.
+      completionRate: json['completionRate'] != null ? (json['completionRate'] as num).toDouble() : null,
+      averageScore: json['averageScore'] != null ? (json['averageScore'] as num).toDouble() : null,
       totalStoreVisits: json['totalStoreVisits'] as int?,
     );
   }

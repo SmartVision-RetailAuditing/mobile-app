@@ -7,13 +7,41 @@ import '../tools/AppColors.dart';
 import '../view_model/map_view_model.dart';
 import '../view_model/task_view_model.dart';
 
-class TaskScreen extends ConsumerWidget {
+// 1. DEĞİŞİKLİK: ScrollController kullanabilmek için ConsumerStatefulWidget'a geçtik.
+class TaskScreen extends ConsumerStatefulWidget {
   const TaskScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TaskScreen> createState() => _TaskScreenState();
+}
+
+class _TaskScreenState extends ConsumerState<TaskScreen> {
+  // 2. DEĞİŞİKLİK: Kullanıcının ne kadar kaydırdığını takip eden dinleyici
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Liste aşağı kaydırıldığında tetiklenecek olay
+    _scrollController.addListener(() {
+      // Eğer listenin en altına (veya 100 piksel yakınına) ulaşıldıysa yeni sayfa çek
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
+        ref.read(taskListProvider.notifier).fetchMoreTasks();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final activeTab = ref.watch(taskTabProvider);
-    final tasksAsyncValue = ref.watch(taskListProvider);
+    // 3. DEĞİŞİKLİK: Artık AsyncValue (.when) değil, kendi yazdığımız TaskListState'i dinliyoruz
+    final taskState = ref.watch(taskListProvider);
 
     final Size screenSize = MediaQuery.of(context).size;
     final bool isSmallScreen = screenSize.width < 380;
@@ -21,12 +49,20 @@ class TaskScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: tasksAsyncValue.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => Center(child: Text('Görevler yüklenemedi: $error')),
-          data: (allTasks) {
+        child: Builder(
+          builder: (context) {
+            // İlk yükleme ekranı
+            if (taskState.isLoading && taskState.tasks.isEmpty) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-            // Backend'den dönen 'status' verisine göre ayırıyoruz
+            // Hata ekranı
+            if (taskState.error != null && taskState.tasks.isEmpty) {
+              return Center(child: Text('Görevler yüklenemedi: ${taskState.error}'));
+            }
+
+            // Verileri ayıklama
+            final allTasks = taskState.tasks;
             final pendingTasks = allTasks.where((t) => t.status != 'COMPLETED').toList();
             final doneTasks = allTasks.where((t) => t.status == 'COMPLETED').toList();
 
@@ -38,7 +74,8 @@ class TaskScreen extends ConsumerWidget {
                 Expanded(
                   child: filteredTasks.isEmpty
                       ? const Center(child: Text("Bu sekmede görev bulunmuyor."))
-                      : _buildTaskList(ref, filteredTasks, isSmallScreen),
+                  // 4. DEĞİŞİKLİK: Listeye controller'ı ve isLoadingMore bilgisini gönderiyoruz
+                      : _buildTaskList(ref, filteredTasks, isSmallScreen, taskState.isLoadingMore),
                 ),
               ],
             );
@@ -48,6 +85,7 @@ class TaskScreen extends ConsumerWidget {
     );
   }
 
+  // --- HEADER VE BUTONLAR AYNEN KALIYOR ---
   Widget _buildHeader(BuildContext context, WidgetRef ref, String activeTab, int pendingCount, int doneCount, bool isSmallScreen) {
     final kCardColor = Theme.of(context).cardColor;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -65,7 +103,7 @@ class TaskScreen extends ConsumerWidget {
         children: [
           const SizedBox(height: 8),
           _buildHeaderText(context, isSmallScreen),
-          const SizedBox(height: 20), // Takvim silindiği için boşluğu biraz açtık
+          const SizedBox(height: 20),
           _buildTaskButtons(context, ref, activeTab, pendingCount, doneCount, isSmallScreen),
           const SizedBox(height: 4),
         ],
@@ -127,17 +165,28 @@ class TaskScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTaskList(WidgetRef ref, List<TaskDto> tasks, bool isSmallScreen) {
+  // 5. DEĞİŞİKLİK: Listeyi güncelledik (Controller eklendi ve en alta yükleniyor animasyonu kondu)
+  Widget _buildTaskList(WidgetRef ref, List<TaskDto> tasks, bool isSmallScreen, bool isLoadingMore) {
     return ListView.separated(
+      controller: _scrollController, // Controller'ı bağladık
       padding: const EdgeInsets.all(16),
-      itemCount: tasks.length,
+      // Eğer arkadan yeni veri yükleniyorsa listeye +1 eleman ekliyoruz (ProgressIndicator için)
+      itemCount: tasks.length + (isLoadingMore ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
+        // Eğer listenin sonuna geldiysek ve yükleniyorsa dönen animasyonu göster
+        if (index == tasks.length) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
         return _buildTaskCard(context, ref, tasks[index], isSmallScreen);
       },
     );
   }
 
+  // --- KART TASARIMLARI AYNEN KALIYOR ---
   Widget _buildTaskCard(BuildContext context, WidgetRef ref, TaskDto task, bool isSmallScreen) {
     bool isDone = task.status == 'COMPLETED';
     final kCardColor = Theme.of(context).cardColor;
@@ -201,7 +250,6 @@ class TaskScreen extends ConsumerWidget {
           Text(task.description!, style: TextStyle(color: kTextColor.withOpacity(0.8), fontSize: 13, fontStyle: FontStyle.italic)),
         ],
 
-        // SADECE AKTİF GÖREVLERDE BUTONLARI GÖSTERİYORUZ
         if (!isDone) ...[
           const SizedBox(height: 16),
           _buildActionButtons(context, ref, task, kPrimaryBlue),
@@ -253,19 +301,15 @@ class TaskScreen extends ConsumerWidget {
     );
   }
 
-  // YENİ EKLENEN BUTONLAR BURADA
   Widget _buildActionButtons(BuildContext context, WidgetRef ref, TaskDto task, Color kPrimaryBlue) {
     return Row(
       children: [
-        // 1. HARİTA BUTONU
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () async {
               if (task.latitude != null && task.longitude != null) {
                 final targetLocation = LatLng(task.latitude!, task.longitude!);
-                // Hedef konumu haritaya iletiyoruz
                 await ref.read(mapViewModelProvider.notifier).setTargetLocation(targetLocation);
-                // Harita sekmesine (index: 1) geçiş yapıyoruz
                 ref.read(navIndexProvider.notifier).state = 1;
               }
             },
@@ -280,21 +324,15 @@ class TaskScreen extends ConsumerWidget {
             label: const Text('Göreve Git', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
           ),
         ),
-
-        const SizedBox(width: 12), // İki buton arası boşluk
-
-        // 2. KAMERA BUTONU
+        const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () {
-              // TODO: Aşağıdaki yorumu kaldırarak kameraya geçmeden önce aktif task'ı provider'a kaydedebilirsin.
               ref.read(activeTaskProvider.notifier).state = task;
-
-              // Kamera sekmesine (index: 2) geçiş yapıyoruz
               ref.read(navIndexProvider.notifier).state = 2;
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade600, // Kamerayı yeşil renkle vurguladık
+              backgroundColor: Colors.green.shade600,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(vertical: 14),
