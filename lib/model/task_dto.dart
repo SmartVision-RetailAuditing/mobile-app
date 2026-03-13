@@ -1,6 +1,7 @@
 class TaskDto {
   final int? id;
-  final int? storeId;
+  final int? storeId;      // Eksik olan alan eklendi
+  final int? userId;       // HATA VEREN EKSİK ALAN EKLENDİ
   final String? storeName;
   final String? storeAddress;
   final double? latitude;
@@ -10,12 +11,12 @@ class TaskDto {
   final String? status;
   final String? dueDate;
   final String? description;
-  final int? assigneeId;
-  final String? assigneeName;
+  final String? completedAt;
 
   TaskDto({
     this.id,
     this.storeId,
+    this.userId,
     this.storeName,
     this.storeAddress,
     this.latitude,
@@ -25,25 +26,24 @@ class TaskDto {
     this.status,
     this.dueDate,
     this.description,
-    this.assigneeId,
-    this.assigneeName,
+    this.completedAt,
   });
 
   factory TaskDto.fromJson(Map<String, dynamic> json) {
     return TaskDto(
-      id: json['id'] as int?,
-      storeId: json['storeId'] as int?,
-      storeName: json['storeName'] as String?,
-      storeAddress: json['storeAddress'] as String?,
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
-      taskType: json['taskType'] as String?,
-      priority: json['priority'] as String?,
-      status: json['status'] as String?,
-      dueDate: json['dueDate'] as String?,
-      description: json['description'] as String?,
-      assigneeId: json['assigneeId'] as int?,
-      assigneeName: json['assigneeName'] as String?,
+      id: json['id'],
+      storeId: json['storeId'],
+      userId: json['userId'], // JSON'dan okuma eklendi
+      storeName: json['storeName'] ?? json['marketName'],
+      storeAddress: json['storeAddress'] ?? json['address'],
+      latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
+      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
+      taskType: json['taskType'],
+      priority: json['priority'],
+      status: json['status'],
+      dueDate: json['dueDate'],
+      description: json['description'],
+      completedAt: json['completedAt'],
     );
   }
 }

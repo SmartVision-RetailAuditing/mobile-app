@@ -8,8 +8,10 @@ class TaskRepository implements TaskBase {
   final TaskService _service = ApiTaskService();
 
   @override
-  Future<List<TaskDto>> getMyTasks() async {
-    return await _service.getMyTasks();
+  // 1. Parametreleri buraya da ekliyoruz
+  Future<List<TaskDto>> getMyTasks({int page = 1, int size = 10}) async {
+    // 2. Gelen parametreleri servise iletiyoruz
+    return await _service.getMyTasks(page: page, size: size);
   }
 
   @override

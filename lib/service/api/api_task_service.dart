@@ -8,13 +8,19 @@ class ApiTaskService implements TaskService {
   final Dio _dio = ApiClient().dio; // Merkezi Dio
 
   @override
-  Future<List<TaskDto>> getMyTasks() async {
+  Future<List<TaskDto>> getMyTasks({int page = 1, int size = 10}) async {
     try {
-      final response = await _dio.get('/Tasks/my-tasks');
+      final response = await _dio.get(
+        '/Tasks/my-tasks',
+        queryParameters: {
+          'page': page,
+          'size': size,
+        },
+      );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return data.map((json) => TaskDto.fromJson(json)).toList();
+        final List<dynamic> dataList = response.data['data'];
+        return dataList.map((json) => TaskDto.fromJson(json)).toList();
       } else {
         throw Exception("Görevler alınamadı: ${response.statusCode}");
       }
@@ -46,8 +52,13 @@ class ApiTaskService implements TaskService {
         data: updateData.toJson(),
       );
       return response.statusCode == 200 || response.statusCode == 204;
+    } on DioException catch (e) {
+      // YENİ DEĞİŞİKLİK BURADA: Backend'in gönderdiği gerçek hata mesajını konsola basıyoruz
+      print("UpdateTask API Hatası: ${e.response?.statusCode}");
+      print("Backend Hata Detayı: ${e.response?.data}");
+      return false;
     } catch (e) {
-      print("UpdateTask API Hatası: $e");
+      print("UpdateTask Beklenmeyen Hata: $e");
       return false;
     }
   }

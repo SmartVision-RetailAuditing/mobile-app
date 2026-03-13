@@ -14,15 +14,14 @@ class CameraViewModel extends StateNotifier<void> {
 
     if (activeTask != null && activeTask.id != null) {
       try {
-        // --- SORUN BURADAYDI: Yorum satırı kaldırıldı ve gerçek fonksiyon çağrıldı ---
-        // TaskViewModel içindeki completeTask fonksiyonunu tetikliyoruz.
-        final success = await ref.read(taskViewModelProvider).completeTask(activeTask.id!);
+        // YENİ DEĞİŞİKLİK BURADA: Sadece ID'yi değil, görevin tamamını (activeTask) yolluyoruz
+        final success = await ref.read(taskViewModelProvider).completeTask(activeTask);
 
         if (success) {
           print("Görev başarıyla backend tarafında güncellendi.");
 
-          // ÖNEMLİ: TaskScreen'deki listenin yenilenmesi için provider'ı geçersiz kılıyoruz.
-          ref.invalidate(taskListProvider);
+          // Yeni sonsuz kaydırma mantığına (StateNotifier) göre listeyi baştan çekiyoruz
+          ref.read(taskListProvider.notifier).refresh();
         } else {
           print("Backend güncellemeyi reddetti (Success: false).");
         }
