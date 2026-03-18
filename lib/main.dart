@@ -2,11 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_vision_mobile/providers.dart';
 import 'package:smart_vision_mobile/view/navigation_bar_view.dart';
-import 'package:smart_vision_mobile/view/login_view.dart'; // Giriş sayfanı import et
+import 'package:smart_vision_mobile/view/login_view.dart';
 import 'package:smart_vision_mobile/tools/AppColors.dart';
-import 'package:smart_vision_mobile/providers.dart';
+
+// DİKKAT: Kendi ApiClient dosyanın yolunu buraya eklemelisin
+import 'package:smart_vision_mobile/service/base/api_client.dart';
+
+// 1. ADIM: Tüm uygulamayı yönetecek global navigasyon anahtarımızı oluşturuyoruz
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+
+   ApiClient.onUnauthorized = () {
+     navigatorKey.currentState?.pushAndRemoveUntil(
+       MaterialPageRoute(builder: (context) => const LoginView()),
+       (route) => false, // false diyerek arkadaki tüm açık sayfaları (Kamera, Harita vs.) siliyoruz
+     );
+   };
+
   runApp(
     const ProviderScope(
       child: MyApp(),
@@ -22,18 +37,19 @@ class MyApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
+      // 3. ADIM: Oluşturduğumuz anahtarı MaterialApp'a veriyoruz ki tüm sayfaları kontrol edebilsin
+      navigatorKey: navigatorKey,
+
       debugShowCheckedModeBanner: false,
       title: 'Görev Uygulaması',
       themeMode: themeMode,
       theme: _buildLightTheme(),
       darkTheme: _buildDarkTheme(),
-      // Artık direkt NavigationBarView'u DEĞİL, kapı görevlisini çağırıyoruz:
       home: const AuthChecker(),
     );
   }
 
   ThemeData _buildLightTheme() {
-    // ... Senin yazdığın mevcut light theme kodları ...
     return ThemeData(
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.colorWhite,
@@ -53,7 +69,6 @@ class MyApp extends ConsumerWidget {
   }
 
   ThemeData _buildDarkTheme() {
-    // ... Senin yazdığın mevcut dark theme kodları ...
     return ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: const Color(0xFF121212),
@@ -73,29 +88,25 @@ class MyApp extends ConsumerWidget {
   }
 }
 
-// YENİ EKLENEN KAPI GÖREVLİSİ (AUTH CHECKER)
+// KAPI GÖREVLİSİ (AUTH CHECKER)
 class AuthChecker extends ConsumerWidget {
   const AuthChecker({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // providers.dart içindeki token kontrolünü dinler
     final authState = ref.watch(authCheckProvider);
 
     return authState.when(
-      // Kontrol bittiğinde: Token varsa Ana Sayfa, yoksa Login Sayfası
       data: (isAuthenticated) {
         if (isAuthenticated) {
           return const NavigationBarView();
         } else {
-          return const LoginView(); // Senin Figma tasarımın olan sayfa
+          return const LoginView();
         }
       },
-      // Kontrol sürerken (ilk 0.1 saniye) ekranda yükleniyor ikonu gösterir
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
-      // Bir hata çıkarsa güvenli liman olarak yine Login'i gösterir
       error: (err, stack) => const LoginView(),
     );
   }

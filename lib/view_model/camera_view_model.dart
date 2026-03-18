@@ -1,44 +1,47 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:smart_vision_mobile/view_model/task_view_model.dart';
 import '../providers.dart';
-import '../view_model/task_view_model.dart';
+import '../repository/audit_repository.dart';
 
 class CameraViewModel extends StateNotifier<void> {
   final Ref ref;
+  // Artık doğrudan servisi değil, katmanlı mimariye uygun olarak Repository'i kullanıyoruz
+  final AuditRepository _repository = AuditRepository();
 
   CameraViewModel(this.ref) : super(null);
 
-  Future<void> takePhotoAndCompleteTask() async {
-    // 1. Hangi görev üzerinden kameraya gelindiğini alıyoruz
+  Future<void> takePhotoAndCompleteTask(String imagePath) async {
     final activeTask = ref.read(activeTaskProvider);
 
     if (activeTask != null && activeTask.id != null) {
       try {
-        // YENİ DEĞİŞİKLİK BURADA: Sadece ID'yi değil, görevin tamamını (activeTask) yolluyoruz
-        final success = await ref.read(taskViewModelProvider).completeTask(activeTask);
+        // İşlemi Repository üzerinden tetikliyoruz
+        final success = await _repository.submitAuditPhoto(activeTask.id!, imagePath);
 
         if (success) {
-          print("Görev başarıyla backend tarafında güncellendi.");
-
-          // Yeni sonsuz kaydırma mantığına (StateNotifier) göre listeyi baştan çekiyoruz
+          print("Fotoğraf başarıyla gönderildi ve görev tamamlandı!");
+          // Ana sayfadaki görev listesini yeniliyoruz
           ref.read(taskListProvider.notifier).refresh();
         } else {
-          print("Backend güncellemeyi reddetti (Success: false).");
+          print("Backend fotoğraf yüklemeyi reddetti.");
+          return; // Hata durumunda ekranda kalsın
         }
       } catch (e) {
-        print("Hata oluştu: $e");
-        return; // Hata varsa Dashboard'a gitme, kullanıcı ekranda kalsın.
+        print("Beklenmeyen Hata oluştu: $e");
+        return;
       }
 
-      // 2. İşlem bittikten sonra aktif görevi temizle
+      // Başarılıysa aktif görevi temizle
       ref.read(activeTaskProvider.notifier).state = null;
     }
 
-    // 3. Dashboard sekmesine (index: 3) yönlendir
-    ref.read(navIndexProvider.notifier).state = 3;
+    // Görevler sekmesine yönlendir
+    ref.read(navIndexProvider.notifier).state = 0;
   }
 }
 
+// Provider tanımı
 final cameraViewModelProvider = StateNotifierProvider<CameraViewModel, void>((ref) {
   return CameraViewModel(ref);
 });
