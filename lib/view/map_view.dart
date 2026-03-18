@@ -19,7 +19,7 @@ class MapScreen extends ConsumerWidget {
           GoogleMap(
             mapType: MapType.normal,
             initialCameraPosition: CameraPosition(
-              target: viewModel.targetLocation ?? const LatLng(41.0082, 28.9784),
+              target: viewModel.targetLocation ?? const LatLng(38.4237, 27.1428),
               zoom: 14.5,
             ),
             markers: viewModel.markers,
