@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:smart_vision_mobile/view_model/task_view_model.dart';
 import '../providers.dart';
 import '../repository/audit_repository.dart';
+import '../service/api/api_audit_service.dart';
 
 class CameraViewModel extends StateNotifier<void> {
   final Ref ref;
   // Artık doğrudan servisi değil, katmanlı mimariye uygun olarak Repository'i kullanıyoruz
-  final AuditRepository _repository = AuditRepository();
+  final AuditRepository _repository = AuditRepository(ApiAuditService());
 
   CameraViewModel(this.ref) : super(null);
 
