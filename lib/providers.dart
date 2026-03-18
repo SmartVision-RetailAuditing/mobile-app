@@ -1,3 +1,4 @@
+/*
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,3 +61,55 @@ final authCheckProvider = FutureProvider<bool>((ref) async {
 });
 
 final activeTaskProvider = StateProvider<TaskDto?>((ref) => null);
+*/
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:smart_vision_mobile/tools/token_manager.dart';
+import 'model/task_dto.dart';
+
+// --- YENİ EKLENEN SINIFLARIN İMPORTLARI ---
+import 'service/api/api_audit_service.dart';
+import 'repository/audit_repository.dart';
+import 'view_model/dashboard_view_model.dart';
+
+// ====================================================================
+// 1. GENEL UYGULAMA SAĞLAYICILARI (STATE, THEME, AUTH)
+// ====================================================================
+
+// Navigation Bar için seçili index (0, 1, 2, 3...)
+final navIndexProvider = StateProvider<int>((ref) => 0);
+
+// Uygulama Teması (Light / Dark mod)
+final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.light);
+
+// Kapı Görevlisi (Auth Checker) - Uygulama açıldığında token kontrolü yapar
+final authCheckProvider = FutureProvider<bool>((ref) async {
+  final token = await TokenManager.getToken();
+  return token != null; // Token varsa true, yoksa false döner
+});
+
+// Aktif görevi tutan provider
+final activeTaskProvider = StateProvider<TaskDto?>((ref) => null);
+
+
+// ====================================================================
+// 2. DASHBOARD VE AUDIT SAĞLAYICILARI (MVVM + REPOSITORY PATTERN)
+// ====================================================================
+
+// API Servisi (Ağ isteklerini yapar)
+final apiAuditServiceProvider = Provider<ApiAuditService>((ref) {
+  return ApiAuditService();
+});
+
+// Repository (Veriyi servisten alır, ViewModel'e köprü olur)
+final auditRepositoryProvider = Provider<AuditRepository>((ref) {
+  final apiService = ref.read(apiAuditServiceProvider);
+  return AuditRepository(apiService);
+});
+
+// Dashboard ViewModel (Ekranın tüm mantığını ve durumunu yönetir)
+final dashboardViewModelProvider = ChangeNotifierProvider<DashboardViewModel>((ref) {
+  return DashboardViewModel(ref);
+});
