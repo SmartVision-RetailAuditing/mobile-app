@@ -165,24 +165,31 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
     );
   }
 
-  // 5. DEĞİŞİKLİK: Listeyi güncelledik (Controller eklendi ve en alta yükleniyor animasyonu kondu)
+  // YENİ EKLENEN KISIM: ListView'i RefreshIndicator ile sardık
   Widget _buildTaskList(WidgetRef ref, List<TaskDto> tasks, bool isSmallScreen, bool isLoadingMore) {
-    return ListView.separated(
-      controller: _scrollController, // Controller'ı bağladık
-      padding: const EdgeInsets.all(16),
-      // Eğer arkadan yeni veri yükleniyorsa listeye +1 eleman ekliyoruz (ProgressIndicator için)
-      itemCount: tasks.length + (isLoadingMore ? 1 : 0),
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        // Eğer listenin sonuna geldiysek ve yükleniyorsa dönen animasyonu göster
-        if (index == tasks.length) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        return _buildTaskCard(context, ref, tasks[index], isSmallScreen);
+    return RefreshIndicator(
+      // onRefresh tetiklendiğinde Riverpod'daki refresh metodunu çağırır (verileri baştan çeker)
+      onRefresh: () async {
+        ref.read(taskListProvider.notifier).refresh();
       },
+      color: AppColors.colorPrimaryBlue, // Yükleniyor ikonunun rengi
+      child: ListView.separated(
+        // Liste elemanları ekranı doldurmasa bile kaydırma (ve dolayısıyla yenileme) işleminin çalışmasını sağlar
+        physics: const AlwaysScrollableScrollPhysics(),
+        controller: _scrollController,
+        padding: const EdgeInsets.all(16),
+        itemCount: tasks.length + (isLoadingMore ? 1 : 0),
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (context, index) {
+          if (index == tasks.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return _buildTaskCard(context, ref, tasks[index], isSmallScreen);
+        },
+      ),
     );
   }
 

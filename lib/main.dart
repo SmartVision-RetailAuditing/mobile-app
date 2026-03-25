@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // YENİ: Hafızadan okumak için eklendi
+
 import 'package:smart_vision_mobile/providers.dart';
 import 'package:smart_vision_mobile/view/navigation_bar_view.dart';
 import 'package:smart_vision_mobile/view/login_view.dart';
@@ -11,20 +13,29 @@ import 'package:smart_vision_mobile/service/base/api_client.dart';
 // 1. ADIM: Tüm uygulamayı yönetecek global navigasyon anahtarımızı oluşturuyoruz
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-void main() {
+// YENİ: main fonksiyonunu async yaptık çünkü SharedPreferences'ı bekleyeceğiz
+Future<void> main() async {
+  // Flutter binding'lerini başlatmak şart (async main olduğu için)
   WidgetsFlutterBinding.ensureInitialized();
 
+  // YENİ: Uygulama açılmadan önce hafızadaki tema tercihini oku
+  final prefs = await SharedPreferences.getInstance();
+  final isDarkMode = prefs.getBool('isDarkMode') ?? false; // Kayıt yoksa varsayılan false (Açık mod)
 
-   ApiClient.onUnauthorized = () {
-     navigatorKey.currentState?.pushAndRemoveUntil(
-       MaterialPageRoute(builder: (context) => const LoginView()),
-       (route) => false, // false diyerek arkadaki tüm açık sayfaları (Kamera, Harita vs.) siliyoruz
-     );
-   };
+  ApiClient.onUnauthorized = () {
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginView()),
+          (route) => false, // false diyerek arkadaki tüm açık sayfaları (Kamera, Harita vs.) siliyoruz
+    );
+  };
 
   runApp(
-    const ProviderScope(
-      child: MyApp(),
+    ProviderScope(
+      // YENİ: themeModeProvider'ın başlangıç değerini hafızadan okuduğumuz değerle eziyoruz!
+      overrides: [
+        themeModeProvider.overrideWith((ref) => isDarkMode ? ThemeMode.dark : ThemeMode.light),
+      ],
+      child: const MyApp(),
     ),
   );
 }
@@ -34,6 +45,7 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Artık bu provider başlangıçta hafızadaki değeri taşıyor olacak
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(

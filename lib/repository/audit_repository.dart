@@ -9,8 +9,8 @@ class AuditRepository implements AuditBase {
   AuditRepository(this._apiService);
 
   // --- DASHBOARD İÇİN ---
-  Future<List<AuditDto>> getRecentAudits() async {
-    return await _apiService.getRecentAudits();
+  Future<List<AuditDto>> getRecentAudits(int page, int size) async {
+    return await _apiService.getRecentAudits(page, size);
   }
 
   // --- KAMERA İÇİN ---
