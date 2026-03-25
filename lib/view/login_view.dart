@@ -23,7 +23,7 @@ class LoginView extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo Section (Buzlu Cam Efekti)
+                  // Logo Section (Katı Beyaz Kutu Tasarımı)
                   Align(
                     alignment: Alignment.center,
                     child: Container(
@@ -31,27 +31,25 @@ class LoginView extends ConsumerWidget {
                       height: 96,
                       margin: const EdgeInsets.only(bottom: 24),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white, // Yarı saydamlığı kaldırdık, tam beyaz yaptık
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
                         boxShadow: const [
                           BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
+                            color: Colors.black26, // Gölgeyi biraz belirginleştirdik
+                            blurRadius: 12,
+                            offset: Offset(0, 6),
                           ),
                         ],
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(24),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 4.0, sigmaY: 4.0),
-                          child: const Center(
-                            child: Icon(
-                              Icons.shopping_cart_outlined,
-                              size: 48,
-                              color: Colors.white,
-                            ),
+                        child: Center(
+                          // Buzlu camı (BackdropFilter) sildik, logonun kendi beyazıyla kutu bütünleşecek
+                          child: Image.asset(
+                            'assets/logo.png',
+                            width: 64,
+                            height: 64,
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),

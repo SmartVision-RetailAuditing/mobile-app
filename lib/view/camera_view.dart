@@ -2,8 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart'; // YENİ: ML Kit Paketi
 import '../providers.dart';
 import '../view_model/camera_view_model.dart';
+import 'package:smart_vision_mobile/tools/PhotoValidator.dart';
 
 class CameraScreen extends ConsumerStatefulWidget {
   const CameraScreen({super.key});
@@ -63,12 +65,58 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
 
     setState(() { _isLoading = true; });
 
-    // ViewModel'i çağırıp dosya yolunu (imagePath) gönderiyoruz
+    // --- YAPAY ZEKA (ML KIT) KONTROLÜ BAŞLANGIÇ ---
+    final validator = PhotoValidator();
+    bool isValidShelf = await validator.isValidShelfPhoto(_selectedImage!.path);
+    validator.dispose();
+
+    if (!isValidShelf) {
+      // Eğer fotoğraf raf/ürün değilse işlemi iptal et ve kullanıcıyı uyar
+      setState(() { _isLoading = false; });
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
+                const SizedBox(width: 8),
+                const Text("Geçersiz Fotoğraf"),
+              ],
+            ),
+            content: const Text(
+                "Yapay zeka bu fotoğrafta bir market rafı veya ürün algılayamadı.\n\nLütfen üzerinde ürünler olan net bir raf fotoğrafı çekin."
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Tekrar Çek"),
+              )
+            ],
+          ),
+        );
+      }
+      return; // Backend'e göndermeden fonksiyonu burada durdur!
+    }
+    // --- YAPAY ZEKA KONTROLÜ BİTİŞ ---
+
+    // Her şey yolundaysa ViewModel'i çağırıp dosya yolunu gönder
     await ref.read(cameraViewModelProvider.notifier).takePhotoAndCompleteTask(_selectedImage!.path);
 
     if (mounted) {
       setState(() { _isLoading = false; });
-      _selectedImage = null; // Yükleme sonrası ekranı temizle
+      _selectedImage = null; // Ekranı temizle
+
+      // Alt menüdeki Dashboard sekmesine (örneğin index 3) geçiş yap
+      ref.read(navIndexProvider.notifier).state = 3;
+
+      // Kullanıcıya güzel bir mesaj göster
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Görev başarıyla tamamlandı ve analiz edildi!"),
+          backgroundColor: Colors.green,
+        ),
+      );
     }
   }
 
@@ -183,10 +231,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               onPressed: hasTask && _selectedImage != null && !_isLoading ? _submitPhoto : null,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.green.shade600, // Aktifken arka plan rengi
-                foregroundColor: Colors.white,          // Aktifken yazı rengi
-                disabledBackgroundColor: Colors.grey.shade300, // Pasifken arka plan rengi
-                disabledForegroundColor: Colors.grey.shade700, // EKLENEN SATIR: Pasifken yazı rengi
+                backgroundColor: Colors.green.shade600,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey.shade300,
+                disabledForegroundColor: Colors.grey.shade700,
               ),
               child: _isLoading
                   ? const SizedBox(

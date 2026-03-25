@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/audit_dto.dart';
-import '../providers.dart'; // import yolunu kendi projene göre ayarla
+import '../providers.dart';
 
 class DashboardViewModel extends ChangeNotifier {
   final Ref ref;
@@ -10,47 +10,93 @@ class DashboardViewModel extends ChangeNotifier {
   // --- EKRANIN DURUM (STATE) DEĞİŞKENLERİ ---
   List<AuditDto> recentAudits = [];
   int? selectedAuditId;
-  bool isLoading = true;
+  bool isLoading = true;          // İlk açılış yüklemesi
+  bool isLoadingMore = false;     // Sayfalama (yeni sayfa) yüklemesi
   String? errorMessage;
 
+  int _currentPage = 1;           // Mevcut sayfa takibi
+  final int _pageSize = 20;       // Her istekte kaç veri geleceği
+
   DashboardViewModel(this.ref) {
-    loadDashboardData();
+    // Sayfa ilk oluşturulduğunda ilk verileri çek
+    loadDashboardData(isRefresh: true);
   }
 
-  // Seçili olan denetimi getirir, yoksa ilk denetimi getirir
+  // --- YENİ EKLENEN: ÇIKIŞ YAPINCA HAFIZAYI TEMİZLEME FONKSİYONU ---
+  void clearData() {
+    recentAudits = [];
+    selectedAuditId = null;
+    isLoading = true;
+    errorMessage = null;
+    _currentPage = 1;
+    notifyListeners();
+  }
+
+  // Seçili olan veya varsayılan denetimi döndürür
   AuditDto? get currentAudit {
     if (recentAudits.isEmpty) return null;
     try {
-      return recentAudits.firstWhere((a) => a.id == selectedAuditId);
+      return recentAudits.firstWhere(
+            (a) => a.id == selectedAuditId,
+        orElse: () => recentAudits.first,
+      );
     } catch (e) {
       return recentAudits.first;
     }
   }
 
-  // --- API'DEN VERİ ÇEKME ---
-  Future<void> loadDashboardData() async {
-    isLoading = true;
-    errorMessage = null;
-    notifyListeners(); // Ekranı yükleniyor moduna al
+  // --- API'DEN VERİ ÇEKME VE SAYFALAMA ---
+  Future<void> loadDashboardData({bool isRefresh = false}) async {
+    // Zaten bir yükleme varsa işlemi başlatma
+    if (isLoadingMore) return;
+
+    if (isRefresh) {
+      _currentPage = 1;
+      recentAudits = [];
+      isLoading = true;
+      errorMessage = null;
+    } else {
+      isLoadingMore = true;
+    }
+    notifyListeners();
 
     try {
-      final audits = await ref.read(auditRepositoryProvider).getRecentAudits();
+      // Repository fonksiyonunu sayfa ve boyut parametreleriyle çağırıyoruz
+      final audits = await ref.read(auditRepositoryProvider).getRecentAudits(
+          _currentPage, _pageSize
+      );
 
-      recentAudits = audits;
-      selectedAuditId = audits.isNotEmpty ? audits.first.id : null;
+      if (isRefresh) {
+        recentAudits = audits;
+      } else {
+        recentAudits.addAll(audits); // Yeni gelenleri mevcut listenin sonuna ekle
+      }
+
+      // Veri geldiyse bir sonraki sayfa numarasını hazırla
+      if (audits.isNotEmpty) {
+        _currentPage++;
+      }
+
+      // Başlangıçta seçili bir audit yoksa ilkini seç
+      if (selectedAuditId == null && recentAudits.isNotEmpty) {
+        selectedAuditId = recentAudits.first.id;
+      }
+
       isLoading = false;
+      isLoadingMore = false;
     } catch (e) {
       isLoading = false;
-      errorMessage = e.toString();
+      isLoadingMore = false;
+      errorMessage = "Veriler yüklenemedi: $e";
     }
 
-    notifyListeners(); // Veriler geldi, ekranı güncelle!
+    notifyListeners();
   }
 
-  // Kullanıcı farklı bir ziyarete tıklarsa tetiklenir
+  // Kullanıcı listeden başka bir ziyarete tıkladığında
   void selectVisit(int auditId) {
     selectedAuditId = auditId;
-    notifyListeners(); // Yeni seçime göre grafikleri güncelle
+    notifyListeners();
   }
 
   // --- GRAFİKLER İÇİN DÖNÜŞTÜRÜCÜ FONKSİYONLAR ---
@@ -59,7 +105,7 @@ class DashboardViewModel extends ChangeNotifier {
     if (audit == null || audit.brandDistributionJson == null) return [];
     try {
       final Map<String, dynamic> data = jsonDecode(audit.brandDistributionJson!);
-      final List<Color> colors = [Colors.blue, Colors.green, Colors.orange, Colors.grey];
+      final List<Color> colors = [Colors.blue, Colors.green, Colors.orange, Colors.red, Colors.purple, Colors.grey];
       int index = 0;
 
       return data.entries.map((e) {

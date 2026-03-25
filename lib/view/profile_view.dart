@@ -259,7 +259,8 @@ class ProfileScreen extends ConsumerWidget {
           Switch(
             value: isDark,
             activeColor: AppColors.colorPrimaryBlue,
-            onChanged: (value) => ref.read(themeModeProvider.notifier).state = value ? ThemeMode.dark : ThemeMode.light,
+            // DEĞİŞEN KISIM BURASI: Artık ViewModel'deki fonksiyonu çağırıyoruz
+            onChanged: (value) => ref.read(profileViewModelProvider).toggleTheme(value),
           ),
         ],
       ),

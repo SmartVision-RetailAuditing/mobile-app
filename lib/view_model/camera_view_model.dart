@@ -38,6 +38,7 @@ class CameraViewModel extends StateNotifier<void> {
     }
 
     // Görevler sekmesine yönlendir
+    ref.read(dashboardViewModelProvider).loadDashboardData(isRefresh: true);
     ref.read(navIndexProvider.notifier).state = 0;
   }
 }

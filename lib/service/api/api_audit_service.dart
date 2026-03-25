@@ -8,13 +8,13 @@ class ApiAuditService implements AuditService {
   final ApiClient _apiClient = ApiClient(); // Merkezi Dio istemcisi
 
   // --- 1. DASHBOARD İÇİN VERİ ÇEKME ---
-  Future<List<AuditDto>> getRecentAudits() async {
+  Future<List<AuditDto>> getRecentAudits(int page, int size) async {
     try {
       final response = await _apiClient.dio.get(
-        '/Audits',
+        '/Audits/my-audits',
         queryParameters: {
-          'page': 1,
-          'size': 10,
+          'page': page,
+          'size': size,
         },
       );
 

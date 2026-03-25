@@ -13,9 +13,11 @@ class NavigationBarView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
     final selectedIndex = ref.watch(navIndexProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // DEĞİŞEN KISIM: Artık genişliğe değil, cihazın yatay/dikey tutulduğuna bakıyoruz!
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     final List<Widget> pages = [
       const TaskScreen(),
@@ -25,15 +27,48 @@ class NavigationBarView extends ConsumerWidget {
       const ProfileScreen(),
     ];
 
+    final bodyContent = IndexedStack(
+      index: selectedIndex,
+      children: pages,
+    );
+
+    // EĞER CİHAZ YATAY TUTULUYORSA (TABLET YAN VEYA TELEFON YAN) -> SOL MENÜ
+    if (isLandscape) {
+      return Scaffold(
+        body: Row(
+          children: [
+            _buildNavigationRail(context, ref, selectedIndex),
+            VerticalDivider(thickness: 1, width: 1, color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
+            Expanded(child: bodyContent),
+          ],
+        ),
+      );
+    }
+
+    // EĞER CİHAZ DİKEY TUTULUYORSA (TABLET DİK VEYA TELEFON DİK) -> ALT MENÜ
     return Scaffold(
-      body: IndexedStack(
-        index: selectedIndex,
-        children: pages,
-      ),
+      body: bodyContent,
       bottomNavigationBar: _buildBottomNavigationBarContainer(ref, selectedIndex, isDark),
     );
   }
 
+  // --- SOL MENÜ (RAIL) TASARIMI ---
+  Widget _buildNavigationRail(BuildContext context, WidgetRef ref, int selectedIndex) {
+    return NavigationRail(
+      selectedIndex: selectedIndex,
+      onDestinationSelected: (index) {
+        ref.read(navIndexProvider.notifier).state = index;
+      },
+      labelType: NavigationRailLabelType.all,
+      useIndicator: true,
+      indicatorColor: Theme.of(context).primaryColor.withOpacity(0.1),
+      selectedLabelTextStyle: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold, fontSize: 12),
+      unselectedLabelTextStyle: const TextStyle(fontSize: 12),
+      destinations: _railItems,
+    );
+  }
+
+  // --- ALT MENÜ TASARIMI ---
   Widget _buildBottomNavigationBarContainer(WidgetRef ref, int selectedIndex, bool isDark) {
     return Container(
       decoration: BoxDecoration(
@@ -63,6 +98,7 @@ class NavigationBarView extends ConsumerWidget {
     );
   }
 
+  // --- ALT MENÜ İKONLARI ---
   List<BottomNavigationBarItem> get _navItems {
     return const [
       BottomNavigationBarItem(icon: AppIcons.iconTask, label: 'Görevler'),
@@ -70,6 +106,17 @@ class NavigationBarView extends ConsumerWidget {
       BottomNavigationBarItem(icon: AppIcons.iconCamera, label: 'Kamera'),
       BottomNavigationBarItem(icon: AppIcons.iconDashboard, label: 'Dashboard'),
       BottomNavigationBarItem(icon: AppIcons.iconProfile, label: 'Profil'),
+    ];
+  }
+
+  // --- SOL MENÜ İKONLARI (NavigationRail için özel yapı) ---
+  List<NavigationRailDestination> get _railItems {
+    return const [
+      NavigationRailDestination(icon: AppIcons.iconTask, label: Text('Görevler')),
+      NavigationRailDestination(icon: AppIcons.iconMap, label: Text('Harita')),
+      NavigationRailDestination(icon: AppIcons.iconCamera, label: Text('Kamera')),
+      NavigationRailDestination(icon: AppIcons.iconDashboard, label: Text('Dashboard')),
+      NavigationRailDestination(icon: AppIcons.iconProfile, label: Text('Profil')),
     ];
   }
 }
