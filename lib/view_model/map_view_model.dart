@@ -8,7 +8,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
-
 final mapViewModelProvider = ChangeNotifierProvider.autoDispose<MapViewModel>((ref) {
   return MapViewModel();
 });
@@ -60,20 +59,55 @@ class MapViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> createRoute() async {
+  // DEĞİŞİKLİK BURADA: Artık BuildContext alıyor ki diyalog gösterebilsin
+  Future<void> createRoute(BuildContext context) async {
     if (targetLocation == null) {
       debugPrint("Hedef konum yok, rota çizilemiyor.");
       return;
     }
 
+    // 1. KONTROL: GPS (Konum Servisi) açık mı?
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    if (!serviceEnabled) {
+      if (context.mounted) {
+        _showSettingsDialog(
+          context: context,
+          title: "Konum Servisleri Kapalı",
+          message: "Yol tarifi alabilmek için lütfen cihazınızın konum (GPS) servisini açın.",
+          onConfirm: () => Geolocator.openLocationSettings(),
+        );
+      }
+      return; // Servis kapalıysa devam etme
+    }
 
+    // 2. KONTROL: Uygulamaya konum izni verilmiş mi?
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
+      if (permission == LocationPermission.denied) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Rota çizmek için konum iznine ihtiyacımız var."), backgroundColor: Colors.orange),
+          );
+        }
+        return;
+      }
     }
+
+    // 3. KONTROL: İzin kalıcı olarak reddedilmişse (Kullanıcı "Bir Daha Sorma" demişse)
+    if (permission == LocationPermission.deniedForever) {
+      if (context.mounted) {
+        _showSettingsDialog(
+          context: context,
+          title: "Konum İzni Gerekli",
+          message: "Konum izni kalıcı olarak reddedilmiş. Lütfen ayarlara giderek uygulamaya konum izni verin.",
+          onConfirm: () => Geolocator.openAppSettings(),
+        );
+      }
+      return;
+    }
+
+    // --- HER ŞEY YOLUNDAYSA ROTA ÇİZİMİNE BAŞLA ---
 
     Position userPosition = await Geolocator.getCurrentPosition();
     LatLng userLocation = LatLng(userPosition.latitude, userPosition.longitude);
@@ -122,6 +156,48 @@ class MapViewModel extends ChangeNotifier {
     } catch (e) {
       debugPrint("Rota hatası: $e");
     }
+  }
+
+  // YENİ EKLENEN YARDIMCI DİYALOG FONKSİYONU
+  void _showSettingsDialog({
+    required BuildContext context,
+    required String title,
+    required String message,
+    required VoidCallback onConfirm,
+  }) {
+    showDialog(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.location_off, color: Colors.red),
+              const SizedBox(width: 8),
+              Expanded(child: Text(title, style: const TextStyle(fontSize: 18))),
+            ],
+          ),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("İptal", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                onConfirm(); // Ayarları açan Geolocator fonksiyonunu tetikler
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text("Ayarlara Git"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _fitBounds(LatLng origin, LatLng dest) async {

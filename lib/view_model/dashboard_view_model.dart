@@ -55,6 +55,10 @@ class DashboardViewModel extends ChangeNotifier {
       recentAudits = [];
       isLoading = true;
       errorMessage = null;
+
+      // SİHİRLİ DOKUNUŞ BURADA: Yenileme yapıldığında eski seçimi unut!
+      selectedAuditId = null;
+
     } else {
       isLoadingMore = true;
     }
@@ -77,7 +81,7 @@ class DashboardViewModel extends ChangeNotifier {
         _currentPage++;
       }
 
-      // Başlangıçta seçili bir audit yoksa ilkini seç
+      // Başlangıçta seçili bir audit yoksa ilkini (EN YENİSİNİ) seç
       if (selectedAuditId == null && recentAudits.isNotEmpty) {
         selectedAuditId = recentAudits.first.id;
       }

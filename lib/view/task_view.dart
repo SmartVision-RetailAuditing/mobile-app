@@ -7,7 +7,6 @@ import '../tools/AppColors.dart';
 import '../view_model/map_view_model.dart';
 import '../view_model/task_view_model.dart';
 
-// 1. DEĞİŞİKLİK: ScrollController kullanabilmek için ConsumerStatefulWidget'a geçtik.
 class TaskScreen extends ConsumerStatefulWidget {
   const TaskScreen({super.key});
 
@@ -16,7 +15,6 @@ class TaskScreen extends ConsumerStatefulWidget {
 }
 
 class _TaskScreenState extends ConsumerState<TaskScreen> {
-  // 2. DEĞİŞİKLİK: Kullanıcının ne kadar kaydırdığını takip eden dinleyici
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -40,7 +38,6 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
   @override
   Widget build(BuildContext context) {
     final activeTab = ref.watch(taskTabProvider);
-    // 3. DEĞİŞİKLİK: Artık AsyncValue (.when) değil, kendi yazdığımız TaskListState'i dinliyoruz
     final taskState = ref.watch(taskListProvider);
 
     final Size screenSize = MediaQuery.of(context).size;
@@ -72,10 +69,9 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
               children: [
                 _buildHeader(context, ref, activeTab, pendingTasks.length, doneTasks.length, isSmallScreen),
                 Expanded(
-                  child: filteredTasks.isEmpty
-                      ? const Center(child: Text("Bu sekmede görev bulunmuyor."))
-                  // 4. DEĞİŞİKLİK: Listeye controller'ı ve isLoadingMore bilgisini gönderiyoruz
-                      : _buildTaskList(ref, filteredTasks, isSmallScreen, taskState.isLoadingMore),
+                  // DEĞİŞİKLİK: Liste boş mu dolu mu kontrolünü artık _buildTaskList içinde yapıyoruz.
+                  // Böylece RefreshIndicator hiçbir zaman ekrandan kaybolmuyor!
+                  child: _buildTaskList(ref, filteredTasks, isSmallScreen, taskState.isLoadingMore),
                 ),
               ],
             );
@@ -165,16 +161,31 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
     );
   }
 
-  // YENİ EKLENEN KISIM: ListView'i RefreshIndicator ile sardık
   Widget _buildTaskList(WidgetRef ref, List<TaskDto> tasks, bool isSmallScreen, bool isLoadingMore) {
     return RefreshIndicator(
-      // onRefresh tetiklendiğinde Riverpod'daki refresh metodunu çağırır (verileri baştan çeker)
       onRefresh: () async {
-        ref.read(taskListProvider.notifier).refresh();
+        await ref.read(taskListProvider.notifier).refresh();
       },
-      color: AppColors.colorPrimaryBlue, // Yükleniyor ikonunun rengi
-      child: ListView.separated(
-        // Liste elemanları ekranı doldurmasa bile kaydırma (ve dolayısıyla yenileme) işleminin çalışmasını sağlar
+      color: AppColors.colorPrimaryBlue,
+      child: tasks.isEmpty
+      // 1. DURUM: EĞER LİSTE BOŞSA
+      // CustomScrollView kullanarak ekranda kaydırılabilir boş bir alan yaratıyoruz.
+          ? CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Text(
+                "Bu sekmede görev bulunmuyor.",
+                style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6)),
+              ),
+            ),
+          ),
+        ],
+      )
+      // 2. DURUM: EĞER LİSTEDE ELEMAN VARSA (Eski halin)
+          : ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         controller: _scrollController,
         padding: const EdgeInsets.all(16),

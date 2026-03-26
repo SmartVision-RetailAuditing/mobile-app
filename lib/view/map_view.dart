@@ -43,11 +43,13 @@ class MapScreen extends ConsumerWidget {
                     alignment: Alignment.centerRight,
                     child: FloatingActionButton.extended(
                       onPressed: () {
-                        viewModel.createRoute();
+                        // DEĞİŞİKLİK BURADA: Artık context gönderiyoruz
+                        viewModel.createRoute(context);
                       },
                       label: const Text("Yol Tarifi Al"),
                       icon: const Icon(Icons.directions),
                       backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 10),
