@@ -12,7 +12,8 @@ class CameraViewModel extends StateNotifier<void> {
 
   CameraViewModel(this.ref) : super(null);
 
-  Future<void> takePhotoAndCompleteTask(String imagePath) async {
+  // DİKKAT: Artık Future<bool> dönüyor! (Başarılı mı başarısız mı)
+  Future<bool> takePhotoAndCompleteTask(String imagePath) async {
     final activeTask = ref.read(activeTaskProvider);
 
     if (activeTask != null && activeTask.id != null) {
@@ -24,22 +25,20 @@ class CameraViewModel extends StateNotifier<void> {
           print("Fotoğraf başarıyla gönderildi ve görev tamamlandı!");
           // Ana sayfadaki görev listesini yeniliyoruz
           ref.read(taskListProvider.notifier).refresh();
+
+          // Başarılıysa aktif görevi temizle
+          ref.read(activeTaskProvider.notifier).state = null;
+          return true; // İşlem başarılı!
         } else {
           print("Backend fotoğraf yüklemeyi reddetti.");
-          return; // Hata durumunda ekranda kalsın
+          return false; // İşlem başarısız!
         }
       } catch (e) {
         print("Beklenmeyen Hata oluştu: $e");
-        return;
+        return false; // Hata oldu!
       }
-
-      // Başarılıysa aktif görevi temizle
-      ref.read(activeTaskProvider.notifier).state = null;
     }
-
-    // Görevler sekmesine yönlendir
-    ref.read(dashboardViewModelProvider).loadDashboardData(isRefresh: true);
-    ref.read(navIndexProvider.notifier).state = 0;
+    return false;
   }
 }
 

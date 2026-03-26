@@ -83,7 +83,7 @@ class TaskListNotifier extends StateNotifier<TaskListState> {
     }
   }
 
-  void refresh() {
+  Future<void> refresh() async {
     fetchInitialTasks();
   }
 }

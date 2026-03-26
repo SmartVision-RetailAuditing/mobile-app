@@ -7,6 +7,8 @@ import '../providers.dart';
 import '../view_model/camera_view_model.dart';
 import 'package:smart_vision_mobile/tools/PhotoValidator.dart';
 
+import '../view_model/profile_view_model.dart';
+
 class CameraScreen extends ConsumerStatefulWidget {
   const CameraScreen({super.key});
 
@@ -44,10 +46,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     // KONTROL 1: Görev seçili mi?
     if (activeTask == null || activeTask.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Hata: Lütfen önce Görevler sekmesinden bir görev seçin!"),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text("Hata: Lütfen önce Görevler sekmesinden bir görev seçin!"), backgroundColor: Colors.red),
       );
       return;
     }
@@ -55,10 +54,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     // KONTROL 2: Fotoğraf var mı?
     if (_selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Lütfen göndermeden önce bir fotoğraf çekin veya seçin."),
-          backgroundColor: Colors.orange,
-        ),
+        const SnackBar(content: Text("Lütfen göndermeden önce bir fotoğraf çekin veya seçin."), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -71,7 +67,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     validator.dispose();
 
     if (!isValidShelf) {
-      // Eğer fotoğraf raf/ürün değilse işlemi iptal et ve kullanıcıyı uyar
       setState(() { _isLoading = false; });
       if (mounted) {
         showDialog(
@@ -84,39 +79,45 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                 const Text("Geçersiz Fotoğraf"),
               ],
             ),
-            content: const Text(
-                "Yapay zeka bu fotoğrafta bir market rafı veya ürün algılayamadı.\n\nLütfen üzerinde ürünler olan net bir raf fotoğrafı çekin."
-            ),
+            content: const Text("Yapay zeka bu fotoğrafta bir market rafı veya ürün algılayamadı.\n\nLütfen üzerinde ürünler olan net bir raf fotoğrafı çekin."),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Tekrar Çek"),
-              )
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Tekrar Çek"))
             ],
           ),
         );
       }
-      return; // Backend'e göndermeden fonksiyonu burada durdur!
+      return;
     }
     // --- YAPAY ZEKA KONTROLÜ BİTİŞ ---
 
-    // Her şey yolundaysa ViewModel'i çağırıp dosya yolunu gönder
-    await ref.read(cameraViewModelProvider.notifier).takePhotoAndCompleteTask(_selectedImage!.path);
+    // DÜZELTME BURADA: ViewModel'den gelen sonucu (true/false) alıyoruz!
+    bool isSuccess = await ref.read(cameraViewModelProvider.notifier).takePhotoAndCompleteTask(_selectedImage!.path);
 
     if (mounted) {
       setState(() { _isLoading = false; });
-      _selectedImage = null; // Ekranı temizle
 
-      // Alt menüdeki Dashboard sekmesine (örneğin index 3) geçiş yap
-      ref.read(navIndexProvider.notifier).state = 3;
+      if (isSuccess) {
+        _selectedImage = null; // Ekranı temizle
 
-      // Kullanıcıya güzel bir mesaj göster
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Görev başarıyla tamamlandı ve analiz edildi!"),
-          backgroundColor: Colors.green,
-        ),
-      );
+        // 1. Dashboard verilerini baştan çekmesi için emir ver!
+        ref.read(dashboardViewModelProvider).loadDashboardData(isRefresh: true);
+
+        // 2. Profil sayfasındaki istatistiklerin de güncellenmesi için eski veriyi çöpe at!
+        ref.invalidate(profileDataProvider);
+
+        // 3. Alt menüdeki Dashboard sekmesine (index 3) geçiş yap!
+        ref.read(navIndexProvider.notifier).state = 3;
+
+        // Başarı mesajı
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Görev başarıyla tamamlandı ve analiz edildi!"), backgroundColor: Colors.green),
+        );
+      } else {
+        // Eğer backend redderse veya hata çıkarsa:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Fotoğraf yüklenirken bir sorun oluştu!"), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 

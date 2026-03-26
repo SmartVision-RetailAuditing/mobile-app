@@ -38,19 +38,32 @@ class ApiAuditService implements AuditService {
         'Image': await MultipartFile.fromFile(imagePath, filename: 'audit_photo.jpg'),
       });
 
+      // API İsteği
       final response = await _apiClient.dio.post(
         '/Audits/submit',
         data: formData,
+        // DÜZELTME 1: Görüntü işleme modeli uzun sürebileceği için süreyi uzatıyoruz!
+        options: Options(
+          receiveTimeout: const Duration(seconds: 60),
+          sendTimeout: const Duration(seconds: 60),
+        ),
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      // DÜZELTME 2: 200, 201, 202, 204 gibi TÜM başarılı (2xx) kodları kabul et!
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
         print("Fotoğraf başarıyla yüklendi: ${response.data}");
         return true;
       }
+
+      print("Backend başarısız bir kod döndü: ${response.statusCode}");
       return false;
+
     } on DioException catch (e) {
-      print("Audit API Hatası: ${e.response?.statusCode}");
-      print("Hata detayı: ${e.response?.data}");
+      // Hatayı net görebilmek için detaylandırıyoruz
+      print("Dio API Hatası: ${e.type} - ${e.message}");
+      if (e.response != null) {
+        print("Hata detayı: ${e.response?.data}");
+      }
       return false;
     } catch (e) {
       print("Beklenmeyen Hata: $e");
