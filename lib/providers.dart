@@ -67,6 +67,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:smart_vision_mobile/tools/token_manager.dart';
+import 'package:smart_vision_mobile/view_model/camera_view_model.dart';
 import 'model/task_dto.dart';
 
 // --- YENİ EKLENEN SINIFLARIN İMPORTLARI ---
@@ -112,4 +113,9 @@ final auditRepositoryProvider = Provider<AuditRepository>((ref) {
 // Dashboard ViewModel (Ekranın tüm mantığını ve durumunu yönetir)
 final dashboardViewModelProvider = ChangeNotifierProvider<DashboardViewModel>((ref) {
   return DashboardViewModel(ref);
+});
+
+// Provider tanımı
+final cameraViewModelProvider = StateNotifierProvider<CameraViewModel, void>((ref) {
+  return CameraViewModel(ref);
 });
