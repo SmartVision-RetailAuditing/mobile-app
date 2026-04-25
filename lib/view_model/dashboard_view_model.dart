@@ -7,47 +7,39 @@ import '../providers.dart';
 class DashboardViewModel extends ChangeNotifier {
   final Ref ref;
 
-  // --- EKRANIN DURUM (STATE) DEĞİŞKENLERİ ---
   List<AuditDto> recentAudits = [];
   int? selectedAuditId;
-  bool isLoading = true;          // İlk açılış yüklemesi
-  bool isLoadingMore = false;     // Sayfalama (yeni sayfa) yüklemesi
+  bool isLoading = true;
+  bool isLoadingMore = false;
+  bool isDetailLoading = false; // Detay/SAS URL yüklenirken loader için
   String? errorMessage;
 
-  int _currentPage = 1;           // Mevcut sayfa takibi
-  final int _pageSize = 20;       // Her istekte kaç veri geleceği
+  int _currentPage = 1;
+  final int _pageSize = 20;
 
   DashboardViewModel(this.ref) {
-    // Sayfa ilk oluşturulduğunda ilk verileri çek
     loadDashboardData(isRefresh: true);
   }
 
-  // --- YENİ EKLENEN: ÇIKIŞ YAPINCA HAFIZAYI TEMİZLEME FONKSİYONU ---
   void clearData() {
     recentAudits = [];
     selectedAuditId = null;
     isLoading = true;
+    isDetailLoading = false;
     errorMessage = null;
     _currentPage = 1;
     notifyListeners();
   }
 
-  // Seçili olan veya varsayılan denetimi döndürür
   AuditDto? get currentAudit {
     if (recentAudits.isEmpty) return null;
-    try {
-      return recentAudits.firstWhere(
-            (a) => a.id == selectedAuditId,
-        orElse: () => recentAudits.first,
-      );
-    } catch (e) {
-      return recentAudits.first;
-    }
+    return recentAudits.firstWhere(
+          (a) => a.id == selectedAuditId,
+      orElse: () => recentAudits.first,
+    );
   }
 
-  // --- API'DEN VERİ ÇEKME VE SAYFALAMA ---
   Future<void> loadDashboardData({bool isRefresh = false}) async {
-    // Zaten bir yükleme varsa işlemi başlatma
     if (isLoadingMore) return;
 
     if (isRefresh) {
@@ -55,35 +47,27 @@ class DashboardViewModel extends ChangeNotifier {
       recentAudits = [];
       isLoading = true;
       errorMessage = null;
-
-      // SİHİRLİ DOKUNUŞ BURADA: Yenileme yapıldığında eski seçimi unut!
       selectedAuditId = null;
-
     } else {
       isLoadingMore = true;
     }
     notifyListeners();
 
     try {
-      // Repository fonksiyonunu sayfa ve boyut parametreleriyle çağırıyoruz
-      final audits = await ref.read(auditRepositoryProvider).getRecentAudits(
-          _currentPage, _pageSize
-      );
+      final audits = await ref.read(auditRepositoryProvider).getRecentAudits(_currentPage, _pageSize);
 
       if (isRefresh) {
         recentAudits = audits;
       } else {
-        recentAudits.addAll(audits); // Yeni gelenleri mevcut listenin sonuna ekle
+        recentAudits.addAll(audits);
       }
 
-      // Veri geldiyse bir sonraki sayfa numarasını hazırla
       if (audits.isNotEmpty) {
         _currentPage++;
       }
 
-      // Başlangıçta seçili bir audit yoksa ilkini (EN YENİSİNİ) seç
       if (selectedAuditId == null && recentAudits.isNotEmpty) {
-        selectedAuditId = recentAudits.first.id;
+        await selectVisit(recentAudits.first.id);
       }
 
       isLoading = false;
@@ -93,17 +77,29 @@ class DashboardViewModel extends ChangeNotifier {
       isLoadingMore = false;
       errorMessage = "Veriler yüklenemedi: $e";
     }
-
     notifyListeners();
   }
 
-  // Kullanıcı listeden başka bir ziyarete tıkladığında
-  void selectVisit(int auditId) {
+  Future<void> selectVisit(int auditId) async {
     selectedAuditId = auditId;
+    isDetailLoading = true;
     notifyListeners();
+
+    try {
+      final detailedAudit = await ref.read(auditRepositoryProvider).getAuditById(auditId);
+      int index = recentAudits.indexWhere((a) => a.id == auditId);
+      if (index != -1) {
+        recentAudits[index] = detailedAudit;
+      }
+    } catch (e) {
+      print("SAS URL hatası: $e");
+    } finally {
+      isDetailLoading = false;
+      notifyListeners();
+    }
   }
 
-  // --- GRAFİKLER İÇİN DÖNÜŞTÜRÜCÜ FONKSİYONLAR ---
+  // --- GRAFİK DÖNÜŞTÜRÜCÜLER ---
 
   List<Map<String, dynamic>> getShelfShareData(AuditDto? audit) {
     if (audit == null || audit.brandDistributionJson == null) return [];
@@ -126,17 +122,12 @@ class DashboardViewModel extends ChangeNotifier {
 
   List<Map<String, dynamic>> getVoidAnalysis(AuditDto? audit) {
     if (audit == null) return [];
-
     int missingCount = audit.issues.where((i) => i.issueType == 'MISSING_PRODUCT').length;
     int lowShelfCount = audit.issues.where((i) => i.issueType == 'LOW_SHELF_SHARE').length;
 
     List<Map<String, dynamic>> voids = [];
-    if (missingCount > 0) {
-      voids.add({'type': 'Kritik Boşluk', 'stockLevel': 'low', 'count': missingCount});
-    }
-    if (lowShelfCount > 0) {
-      voids.add({'type': 'Düşük Raf Payı', 'stockLevel': 'low', 'count': lowShelfCount});
-    }
+    if (missingCount > 0) voids.add({'type': 'Kritik Boşluk', 'stockLevel': 'low', 'count': missingCount});
+    if (lowShelfCount > 0) voids.add({'type': 'Düşük Raf Payı', 'stockLevel': 'low', 'count': lowShelfCount});
     return voids;
   }
 
@@ -146,8 +137,9 @@ class DashboardViewModel extends ChangeNotifier {
     final displayProducts = audit.products.take(4).toList();
 
     return displayProducts.map((p) {
-      double price = p.price ?? 0;
-      bool isCorrect = price > 0 && p.confidenceScore > 0.90;
+      // ARTIK HATA VERMEYECEK: Çünkü DTO'ya price ekledik.
+      double priceValue = p.price ?? 0.0;
+      bool isCorrect = priceValue > 0 && p.confidenceScore > 0.90;
 
       return {
         'product': p.brandName,

@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart'; // YENİ: ML Kit Paketi
+import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 import '../providers.dart';
 import '../view_model/camera_view_model.dart';
 import 'package:smart_vision_mobile/tools/PhotoValidator.dart';
@@ -26,7 +26,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
-        imageQuality: 80, // Yüklemeyi hızlandırmak için boyutu optimize ediyoruz
+        imageQuality: 80,
       );
 
       if (pickedFile != null) {
@@ -90,7 +90,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     }
     // --- YAPAY ZEKA KONTROLÜ BİTİŞ ---
 
-    // DÜZELTME BURADA: ViewModel'den gelen sonucu (true/false) alıyoruz!
+    // ViewModel'den gelen sonucu alıyoruz
     bool isSuccess = await ref.read(cameraViewModelProvider.notifier).takePhotoAndCompleteTask(_selectedImage!.path);
 
     if (mounted) {
@@ -113,7 +113,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           const SnackBar(content: Text("Görev başarıyla tamamlandı ve analiz edildi!"), backgroundColor: Colors.green),
         );
       } else {
-        // Eğer backend redderse veya hata çıkarsa:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Fotoğraf yüklenirken bir sorun oluştu!"), backgroundColor: Colors.red),
         );
@@ -195,7 +194,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
             ),
             const SizedBox(height: 24),
 
-            // KAMERA / GALERİ BUTONLARI
+            // KAMERA / GALERİ BUTONLARI (Yan Yana)
             Row(
               children: [
                 Expanded(

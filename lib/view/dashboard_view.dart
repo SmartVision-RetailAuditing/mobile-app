@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_vision_mobile/providers.dart';
 import 'package:smart_vision_mobile/tools/AppColors.dart';
+import 'package:smart_vision_mobile/view/product_correction_view.dart';
 import '../model/audit_dto.dart';
 import '../model/audit_issue_dto.dart';
 import '../view_model/dashboard_view_model.dart';
@@ -90,6 +91,10 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
+
+                  // --- GÜNCELLENMİŞ ANALİZ EDİLEN RESİM WIDGET'I ---
+                  _buildAnalyzedImage(context, viewModel, currentAudit, kCardColor, isDark, kPrimaryBlue),
+
                   if (shelfShareData.isNotEmpty) ...[
                     _buildShelfShareChart(shelfShareData, kPrimaryBlue, kTextColor, kCardColor, isDark, kGrayText),
                     const SizedBox(height: 16),
@@ -111,6 +116,115 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAnalyzedImage(BuildContext context, DashboardViewModel viewModel, AuditDto audit, Color kCardColor, bool isDark, Color kPrimaryBlue) {
+    if (audit.postImageUrl == null || audit.postImageUrl!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: kCardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: isDark ? Colors.black.withOpacity(0.2) : Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2)),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Icon(Icons.image_search, size: 20, color: kPrimaryBlue),
+                const SizedBox(width: 8),
+                Text(
+                  "İncelenen Raf Görseli",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: isDark ? Colors.white : const Color(0xFF333333)),
+                ),
+              ],
+            ),
+          ),
+
+          // Eğer detay verisi (SAS biletli link) bekleniyorsa loader gösteriyoruz
+          viewModel.isDetailLoading
+              ? const SizedBox(
+            height: 250,
+            child: Center(child: CircularProgressIndicator()),
+          )
+              : GestureDetector(
+            onTap: () {
+              // --- DEĞİŞEN KISIM: ARTIK GERÇEK EKRANA GİDİYORUZ ---
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProductCorrectionScreen(initialAudit: audit),
+                ),
+              );
+            },
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Image.network(
+                  audit.postImageUrl!,
+                  height: 250,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const SizedBox(
+                      height: 250,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    print("❌ Dashboard Resim Hatası: $error");
+                    return Container(
+                      height: 250,
+                      color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.broken_image, size: 48, color: Colors.grey.shade500),
+                          const SizedBox(height: 8),
+                          Text("Görsel yüklenemedi", style: TextStyle(color: Colors.grey.shade500)),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                Positioned(
+                  bottom: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.touch_app, size: 16, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text(
+                          "Ürünleri İncele & Düzenle",
+                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -197,17 +311,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // --- KRİTİK DEĞİŞİKLİK: BOTTOM SHEET ARTIK REACTIVE ---
-  void _showVisitsBottomSheet(
-      BuildContext context,
-      WidgetRef ref,
-      int selectedId,
-      Color kPrimaryBlue,
-      Color kBgColor,
-      Color kTextColor,
-      Color kCardColor,
-      bool isDark) {
-
+  void _showVisitsBottomSheet(BuildContext context, WidgetRef ref, int selectedId, Color kPrimaryBlue, Color kBgColor, Color kTextColor, Color kCardColor, bool isDark) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -223,14 +327,12 @@ class DashboardScreen extends ConsumerWidget {
               minChildSize: 0.3,
               maxChildSize: 0.85,
               builder: (_, scrollController) {
-                // YENİ YÖNTEM: Listener'ı controller yerine NotificationListener ile sarmalıyoruz
                 return NotificationListener<ScrollNotification>(
                   onNotification: (ScrollNotification scrollInfo) {
-                    // Listenin sonuna 100 piksel kala yeni veriyi tetikle
                     if (!vm.isLoadingMore &&
                         scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 100) {
                       vm.loadDashboardData();
-                      return true; // Bildirimi durdur
+                      return true;
                     }
                     return false;
                   },
@@ -242,7 +344,6 @@ class DashboardScreen extends ConsumerWidget {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-                        // Drag Handle (Sürükleme Çubuğu)
                         Container(
                           width: 40, height: 5,
                           margin: const EdgeInsets.only(bottom: 16),
@@ -253,8 +354,7 @@ class DashboardScreen extends ConsumerWidget {
 
                         Expanded(
                           child: ListView.builder(
-                            controller: scrollController, // Sheet'ten gelen controller'ı kullanmak zorunlu
-                            // ÖNEMLİ: Liste az olsa bile kaydırma hareketini algılaması için bu physics şart
+                            controller: scrollController,
                             physics: const AlwaysScrollableScrollPhysics(),
                             itemCount: visits.length + (vm.isLoadingMore ? 1 : 0),
                             itemBuilder: (context, index) {
@@ -329,7 +429,6 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // --- DİĞER CHART VE CARD WIDGET'LARI AYNEN KALIYOR ---
   Widget _buildShelfShareChart(List<Map<String, dynamic>> data, Color kPrimaryBlue, Color kTextColor, Color kCardColor, bool isDark, Color kGrayText) {
     return _buildCard(
       title: 'Share of Shelf',
@@ -388,7 +487,11 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Text(percentage >= 0.8 ? 'Analiz tamamlandı. Ürünler rafta yeterli seviyede.' : 'Analiz tamamlandı. Raf bulunabilirliği düşük seviyede!', style: TextStyle(color: kGrayText, fontSize: 13), textAlign: TextAlign.center),
+            Text(
+              percentage >= 0.8 ? 'Analiz tamamlandı. Ürünler rafta yeterli seviyede.' : 'Analiz tamamlandı. Raf bulunabilirliği düşük seviyede!',
+              style: TextStyle(color: kGrayText, fontSize: 13),
+              textAlign: TextAlign.center, // Burası düzeldi
+            ),
           ],
         ),
       ),

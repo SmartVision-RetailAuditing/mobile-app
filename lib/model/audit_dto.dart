@@ -10,6 +10,8 @@ class AuditDto {
   final double shelfSharePercentage;
   final String status;
   final String? brandDistributionJson;
+  final String? preImageUrl;
+  final String? postImageUrl;
   final List<AuditProductDto> products;
   final List<AuditIssueDto> issues;
 
@@ -22,6 +24,8 @@ class AuditDto {
     required this.shelfSharePercentage,
     required this.status,
     this.brandDistributionJson,
+    this.preImageUrl,
+    this.postImageUrl,
     required this.products,
     required this.issues,
   });
@@ -38,12 +42,45 @@ class AuditDto {
       shelfSharePercentage: (json['shelfSharePercentage'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] ?? '',
       brandDistributionJson: json['brandDistributionJson'],
+      preImageUrl: json['preImageUrl'],
+      postImageUrl: json['postImageUrl'],
       products: json['products'] != null
           ? (json['products'] as List).map((p) => AuditProductDto.fromJson(p)).toList()
           : [],
       issues: json['issues'] != null
           ? (json['issues'] as List).map((i) => AuditIssueDto.fromJson(i)).toList()
           : [],
+    );
+  }
+
+  // --- RIVERPOD VE STATE GÜNCELLEMELERİ İÇİN KRİTİK METOD ---
+  AuditDto copyWith({
+    int? id,
+    String? storeName,
+    String? taskType,
+    DateTime? captureDate,
+    double? complianceScore,
+    double? shelfSharePercentage,
+    String? status,
+    String? brandDistributionJson,
+    String? preImageUrl,
+    String? postImageUrl,
+    List<AuditProductDto>? products,
+    List<AuditIssueDto>? issues,
+  }) {
+    return AuditDto(
+      id: id ?? this.id,
+      storeName: storeName ?? this.storeName,
+      taskType: taskType ?? this.taskType,
+      captureDate: captureDate ?? this.captureDate,
+      complianceScore: complianceScore ?? this.complianceScore,
+      shelfSharePercentage: shelfSharePercentage ?? this.shelfSharePercentage,
+      status: status ?? this.status,
+      brandDistributionJson: brandDistributionJson ?? this.brandDistributionJson,
+      preImageUrl: preImageUrl ?? this.preImageUrl,
+      postImageUrl: postImageUrl ?? this.postImageUrl,
+      products: products ?? this.products,
+      issues: issues ?? this.issues,
     );
   }
 }

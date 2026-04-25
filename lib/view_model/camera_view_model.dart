@@ -1,14 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+// DİKKAT: legacy.dart importu buradan tamamen silindi! Çakışmaları önlemek için bir daha ekleme.
 import 'package:smart_vision_mobile/view_model/task_view_model.dart';
 import '../providers.dart';
-import '../repository/audit_repository.dart';
-import '../service/api/api_audit_service.dart';
 
 class CameraViewModel extends StateNotifier<void> {
   final Ref ref;
-  // Artık doğrudan servisi değil, katmanlı mimariye uygun olarak Repository'i kullanıyoruz
-  final AuditRepository _repository = AuditRepository(ApiAuditService());
 
   CameraViewModel(this.ref) : super(null);
 
@@ -18,8 +15,8 @@ class CameraViewModel extends StateNotifier<void> {
 
     if (activeTask != null && activeTask.id != null) {
       try {
-        // İşlemi Repository üzerinden tetikliyoruz
-        final success = await _repository.submitAuditPhoto(activeTask.id!, imagePath);
+        // Sınıfı elle oluşturmak (new) yerine Riverpod'dan istiyoruz!
+        final success = await ref.read(auditRepositoryProvider).submitAuditPhoto(activeTask.id!, imagePath);
 
         if (success) {
           print("Fotoğraf başarıyla gönderildi ve görev tamamlandı!");
@@ -42,7 +39,3 @@ class CameraViewModel extends StateNotifier<void> {
   }
 }
 
-// Provider tanımı
-final cameraViewModelProvider = StateNotifierProvider<CameraViewModel, void>((ref) {
-  return CameraViewModel(ref);
-});
