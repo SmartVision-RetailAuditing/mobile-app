@@ -1,6 +1,53 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
+    id("dev.flutter.flutter-gradle-plugin")
+}
+
+android {
+    namespace = "com.example.smart_vision_mobile"
+    //compileSdk = flutter.compileSdkVersion ÖÖ
+    compileSdk = 36
+
+    // ---> 1. DEĞİŞİKLİK: Bu satırı aşağıdaki gibi değiştir:
+    ndkVersion = "27.0.12077973"
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_11.toString()
+    }
+
+    defaultConfig {
+        applicationId = "com.example.smart_vision_mobile"
+
+        // ---> 2. DEĞİŞİKLİK: Google Maps için bunu 21 yapman en garantisidir:
+        //minSdk = 21 ÖÖ
+        minSdk = 24
+        // Eski hali şuydu: minSdk = flutter.minSdkVersion
+
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+/*plugins {
+    id("com.android.application")
+    id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -41,4 +88,4 @@ android {
 
 flutter {
     source = "../.."
-}
+}*/
